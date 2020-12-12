@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <androidx.appcompat.widget.AppCompatTextView
+        android:id="@+id/share_sound"
+        style="@style/BottomSheetItem"
+        android:drawableStart="@drawable/ic_baseline_library_music_24"
+        android:text="Share sound"
+        android:clickable="true"
+        android:focusable="true"
+        android:background="?attr/selectableItemBackground"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <androidx.appcompat.widget.AppCompatTextView
+        android:id="@+id/download_image"
+        style="@style/BottomSheetItem"
+        android:drawableStart="@drawable/ic_baseline_image_24"
+        android:text="Download Image"
+        android:clickable="true"
+        android:focusable="true"
+        android:background="?attr/selectableItemBackground"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/share_sound"/>
+
+    <androidx.appcompat.widget.AppCompatTextView
+        android:id="@+id/show_all"
+        style="@style/BottomSheetItem"
+        android:drawableStart="@drawable/ic_baseline_format_list_bulleted_24"
+        android:text="Show all phrases"
+        android:clickable="true"
+        android:focusable="true"
+        android:background="?attr/selectableItemBackground"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/download_image" />
+
+
+    <androidx.appcompat.widget.AppCompatTextView
+        android:id="@+id/rate"
+        style="@style/BottomSheetItem"
+        android:clickable="true"
+        android:focusable="true"
+        android:background="?attr/selectableItemBackground"
+        android:drawableStart="@drawable/ic_baseline_rate_review_24"
+        android:text="Rate app"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/show_all" />
+
+
+</androidx.constraintlayout.widget.ConstraintLayout>
