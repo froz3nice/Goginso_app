@@ -24,7 +24,13 @@ import java.io.BufferedInputStream
 import java.io.File
 import java.io.FileInputStream
 import java.io.IOException
-
+import java.util.ArrayList
+import android.os.Environment
+import androidx.annotation.RawRes
+import androidx.core.content.FileProvider
+import java.io.FileOutputStream
+import java.io.InputStream
+import java.io.OutputStream
 
 fun getPhrasesData(): ArrayList<PhraseData> {
     val withCurses = false
@@ -319,6 +325,72 @@ fun getPhrasesData(): ArrayList<PhraseData> {
         )
         add(PhraseData(R.raw.whos_gonna_carry_the_boats, "Who's gonna carry the boats?!"))
         add(PhraseData(R.raw.you_dont_know_me_son, "You don't know me son!"))
+        add(
+            PhraseData(
+                R.raw.fail_test_get_over,
+                "You fail the test in school, you worked your fcing as off. Get over it."
+            )
+        )
+        add(
+            PhraseData(
+                R.raw.insecure_flush_it_out,
+                "All these insecure people putting those insecurities on you. You got to flush it out."
+            )
+        )
+        add(
+            PhraseData(
+                R.raw.morning_care_yourself,
+                "The main purpose in life is you. If you wake up in the morning and you don't want to do something, you don't care enough about yourself."
+            )
+        )
+        add(
+            PhraseData(
+                R.raw.self_disciple_everything,
+                "Self discipline is everything"
+            )
+        )
+        add(
+            PhraseData(
+                R.raw.spark_but_go_inside,
+                "I may give you the spark, but you got to go inside yourself to find it."
+            )
+        )
+        add(
+            PhraseData(
+                R.raw.sucks_continue_to_suck,
+                "It sucks. It just f-ing sucks. And it's going to continue to suck"
+            )
+        )
+        add(
+            PhraseData(
+                R.raw.until_you_know_stand_for_anything,
+                "Until you know what you want to stand for, you'll always just be sitting down. You'll never stand for anything."
+            )
+        )
+        add(
+            PhraseData(
+                R.raw.every_mfker_aint_do,
+                "Every mfker ain't gonna do what i'm gonna do. This is how you level up."
+            )
+        )
+        add(
+            PhraseData(
+                R.raw.very_purpose_is_you,
+                "Very purpose is you. You are always the purpose."
+            )
+        )
+        add(
+            PhraseData(
+                R.raw.purpose_always_there,
+                "The purpose is always there. The purpose never leaves us."
+            )
+        )
+        add(
+            PhraseData(
+                R.raw.if_not_performing_not_ready,
+                "If you're not constantly performing without purpose, you're not going to be ready when the time comes."
+            )
+        )
     }
 }
 
@@ -328,17 +400,32 @@ val displayMetrics: DisplayMetrics by lazy { Resources.getSystem().displayMetric
 val screenRectPx: Rect
     get() = displayMetrics.run { Rect(0, 0, widthPixels, heightPixels) }
 
-
-fun Int.resToUri(context: Activity): Uri{
+fun Int.resToUri(context: Activity): Uri {
     return Uri.parse("android.resource://" + context.packageName + "/" + this)
 }
-fun shareSound(context: Activity, soundRes: Int) {
-    val fileUri = soundRes.resToUri(context)
 
-    val shareIntent: Intent = ShareCompat.IntentBuilder.from(context)
-        .setType("audio/mp3")
-        .setStream(fileUri)
-        .intent
+fun shareSound(context: Context, @RawRes soundResId: Int, fileName: String = "goggins.mp3") {
+    // Step 1: Copy raw resource to cache
+    val cacheFile = File(context.cacheDir, fileName)
+    context.resources.openRawResource(soundResId).use { input ->
+        FileOutputStream(cacheFile).use { output ->
+            input.copyTo(output)
+        }
+    }
+
+    // Step 2: Get content URI using FileProvider
+    val uri = FileProvider.getUriForFile(
+        context,
+        "com.braziusProductions.gogginsmotivation.fileprovider",
+        cacheFile
+    )
+
+    // Step 3: Create and send share intent
+    val shareIntent = Intent(Intent.ACTION_SEND).apply {
+        type = "audio/mp3"
+        putExtra(Intent.EXTRA_STREAM, uri)
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    }
 
     context.startActivity(Intent.createChooser(shareIntent, "Share Sound"))
 }
@@ -388,76 +475,124 @@ fun openAndroidPermissionsMenu(context: Activity) {
     context.startActivity(intent)
 }
 
-private fun setRingtone(k: File, type: Int, context: Activity): Boolean{
-    val values = ContentValues()
-    values.put(MediaStore.MediaColumns.TITLE, k.getName())
-    values.put(MediaStore.MediaColumns.MIME_TYPE, "audio/mp3")
-    if (RingtoneManager.TYPE_RINGTONE == type) {
-        values.put(MediaStore.Audio.Media.IS_RINGTONE, true)
-    } else if (RingtoneManager.TYPE_ALARM == type) {
-        values.put(MediaStore.Audio.Media.IS_ALARM, true)
+fun openAlarmSoundPicker(context: Activity) {
+    val intent = Intent(RingtoneManager.ACTION_RINGTONE_PICKER).apply {
+        putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_ALARM)
+        putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, "Select Alarm Tone")
+        putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, false)
+        putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true)
+        putExtra(RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, RingtoneManager.getActualDefaultRingtoneUri(context, RingtoneManager.TYPE_ALARM))
     }
-    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-        val newUri: Uri? = context.getContentResolver()
-            .insert(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, values)
-        try {
-            context.getContentResolver().openOutputStream(newUri!!).use { os ->
-                val size = k.length()
-                val bytes = ByteArray(size.toInt())
-                try {
-                    val buf = BufferedInputStream(FileInputStream(k))
-                    buf.read(bytes, 0, bytes.size)
-                    buf.close()
+    context.startActivityForResult(intent, 999) // Handle result in onActivityResult
+}
 
-                    os!!.write(bytes)
-                    os.close()
-                    os.flush()
-                } catch (e: IOException) {
-                    return false
+fun copyMp3ToAlarms(context: Context, @RawRes rawId: Int, fileName: String): Uri? {
+    val alarmsDir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_ALARMS), fileName)
+    if (!alarmsDir.exists()) {
+        context.resources.openRawResource(rawId).use { input ->
+            FileOutputStream(alarmsDir).use { output ->
+                input.copyTo(output)
+            }
+        }
+    }
+
+    val values = ContentValues().apply {
+        put(MediaStore.MediaColumns.DATA, alarmsDir.absolutePath)
+        put(MediaStore.MediaColumns.TITLE, fileName.removeSuffix(".mp3"))
+        put(MediaStore.MediaColumns.MIME_TYPE, "audio/mp3")
+        put(MediaStore.Audio.Media.IS_RINGTONE, false)
+        put(MediaStore.Audio.Media.IS_NOTIFICATION, false)
+        put(MediaStore.Audio.Media.IS_ALARM, true)
+        put(MediaStore.Audio.Media.IS_MUSIC, false)
+    }
+
+    val uri = MediaStore.Audio.Media.getContentUriForPath(alarmsDir.absolutePath)
+    return context.contentResolver.insert(uri!!, values)
+}
+
+
+private fun setRingtone(k: File, type: Int, context: Activity): Boolean {
+    val values = ContentValues().apply {
+        put(MediaStore.MediaColumns.TITLE, k.name)
+        put(MediaStore.MediaColumns.MIME_TYPE, "audio/mp3")
+        put(MediaStore.MediaColumns.SIZE, k.length())
+        when (type) {
+            RingtoneManager.TYPE_RINGTONE -> put(MediaStore.Audio.Media.IS_RINGTONE, true)
+            RingtoneManager.TYPE_ALARM -> put(MediaStore.Audio.Media.IS_ALARM, true)
+        }
+    }
+
+    return try {
+        val newUri: Uri? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            context.contentResolver.insert(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, values)?.also { uri ->
+                context.contentResolver.openOutputStream(uri)?.use { os ->
+                    FileInputStream(k).use { input ->
+                        input.copyTo(os)
+                    }
                 }
             }
-        } catch (ignored: Exception) {
-            return false
+        } else {
+            values.put(MediaStore.MediaColumns.DATA, k.absolutePath)
+            val uri = MediaStore.Audio.Media.getContentUriForPath(k.absolutePath)!!
+            context.contentResolver.delete(uri, MediaStore.MediaColumns.DATA + "=?", arrayOf(k.absolutePath))
+            context.contentResolver.insert(uri, values)
         }
-        RingtoneManager.setActualDefaultRingtoneUri(
-            context, type, newUri
-        )
-        true
-    } else {
-        values.put(MediaStore.MediaColumns.DATA, k.getAbsolutePath())
-        val uri = MediaStore.Audio.Media.getContentUriForPath(
-            k.getAbsolutePath()
-        )!!
-        context.getContentResolver().delete(
-            uri,
-            MediaStore.MediaColumns.DATA + "=\"" + k.getAbsolutePath() + "\"",
-            null
-        )
-        val newUri: Uri = context.getContentResolver().insert(uri, values)!!
-        RingtoneManager.setActualDefaultRingtoneUri(
-            context, type,
-            newUri
-        )
-        context.getContentResolver()
-            .insert(
-                MediaStore.Audio.Media.getContentUriForPath(
-                    k.getAbsolutePath()
-                )!!, values
-            )
-        true
+
+        newUri?.let {
+            RingtoneManager.setActualDefaultRingtoneUri(context, type, it)
+            true
+        } ?: false
+    } catch (e: Exception) {
+        e.printStackTrace()
+        false
     }
 }
-fun setRingtoneOrAlarm(k: File, type: Int, context: Activity,success: () -> Unit) {
+
+fun setRingtoneOrAlarm(k: File, type: Int, context: Activity, success: () -> Unit) {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
         if (Settings.System.canWrite(context)) {
-                setRingtone(k,type,context)
+            if (setRingtone(k, type, context)) {
                 success()
             }
-        else {
+        } else {
             openAndroidPermissionsMenu(context)
         }
-    }else{
-        setRingtone(k,type,context)
-        success()
+    } else {
+        if (setRingtone(k, type, context)) {
+            success()
+        }
     }
 }
+
+fun setAlarmSound(context: Context, soundResId: Int, fileName: String = "goggins.mp3") {
+    val contentValues = ContentValues().apply {
+        put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+        put(MediaStore.MediaColumns.MIME_TYPE, "audio/mp3")
+        put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_RINGTONES)
+        put(MediaStore.Audio.Media.IS_ALARM, 1)
+        put(MediaStore.Audio.Media.IS_MUSIC, 0)
+    }
+
+    val resolver = context.contentResolver
+    val audioUri: Uri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
+
+    val newUri = resolver.insert(audioUri, contentValues)
+
+    if (newUri != null) {
+        // Copy the sound from res/raw to the MediaStore location
+        val inputStream = context.resources.openRawResource(soundResId)
+        val outputStream: OutputStream? = resolver.openOutputStream(newUri)
+
+        outputStream?.use { out ->
+            inputStream.copyTo(out)
+        }
+
+        // Set as default alarm
+        RingtoneManager.setActualDefaultRingtoneUri(
+            context,
+            RingtoneManager.TYPE_ALARM,
+            newUri
+        )
+    }
+}
+

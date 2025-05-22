@@ -62,7 +62,7 @@ fun saveMp3File(res: Int, context: Activity,file: (File) -> Unit){
 
         val f= File(cacheDir,"goggins.mp3");
         val fos =  FileOutputStream(f);
-        val iStream = context.getContentResolver().openInputStream(res.resToUri(context))
+        val iStream = context.contentResolver.openInputStream(res.resToUri(context))
 
         fos.write(iStream?.readBytes())
         fos.flush()

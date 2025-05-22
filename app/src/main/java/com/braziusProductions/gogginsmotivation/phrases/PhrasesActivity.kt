@@ -1,65 +1,89 @@
 package com.braziusProductions.gogginsmotivation.phrases
 
 import android.media.RingtoneManager
+import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import android.view.MenuItem
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.app.NavUtils
 import androidx.recyclerview.widget.LinearLayoutManager
-import com.braziusProductions.gogginsmotivation.*
-import kotlinx.android.synthetic.main.activity_phrases.*
-
+import com.braziusProductions.gogginsmotivation.SoundPlayer
+import com.braziusProductions.gogginsmotivation.copyMp3ToAlarms
+import com.braziusProductions.gogginsmotivation.databinding.ActivityPhrasesBinding
+import com.braziusProductions.gogginsmotivation.getPhrasesData
+import com.braziusProductions.gogginsmotivation.openAlarmSoundPicker
+import com.braziusProductions.gogginsmotivation.openAndroidPermissionsMenu
+import com.braziusProductions.gogginsmotivation.saveMp3File
+import com.braziusProductions.gogginsmotivation.setAlarmSound
+import com.braziusProductions.gogginsmotivation.setRingtoneOrAlarm
+import com.braziusProductions.gogginsmotivation.shareSound
+import com.braziusProductions.gogginsmotivation.toast
 
 class PhrasesActivity : AppCompatActivity() {
+
+    private lateinit var binding: ActivityPhrasesBinding
     private var soundPlayer: SoundPlayer? = null
     private lateinit var viewAdapter: PhrasesAdapter
 
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        when (item.itemId) {
-            android.R.id.home -> {
-                finish()
-                return true
-            }
-        }
-        return super.onOptionsItemSelected(item)
-    }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_phrases)
-        supportActionBar?.setDisplayHomeAsUpEnabled(true)
+        binding = ActivityPhrasesBinding.inflate(layoutInflater)
+        setContentView(binding.root)
 
+        supportActionBar?.setDisplayHomeAsUpEnabled(true)
         title = "All Phrases"
+
         val data = getPhrasesData()
-        soundPlayer = SoundPlayer(this, data[0].soundRes)
+        if (data.isNotEmpty()) {
+            soundPlayer = SoundPlayer(this, data[0].soundRes)
+        }
 
         viewAdapter = PhrasesAdapter(data) { phrase, type ->
             when (type) {
-                PhraseEnum.SHARE ->  shareSound(this@PhrasesActivity,phrase.soundRes)
-                PhraseEnum.RINGTONE -> saveMp3File(phrase.soundRes,this@PhrasesActivity){
-                    setRingtoneOrAlarm(it,RingtoneManager.TYPE_RINGTONE,this@PhrasesActivity){
-                        toast("Ringtone set!")
+                PhraseEnum.SHARE -> {
+                    shareSound(this, phrase.soundRes)
+                }
+
+                PhraseEnum.RINGTONE -> {
+                    saveMp3File(phrase.soundRes, this) {
+                        setRingtoneOrAlarm(it, RingtoneManager.TYPE_RINGTONE, this) {
+                            toast("Ringtone set!")
+                        }
                     }
                 }
-                PhraseEnum.PLAY -> soundPlayer?.playSound(phrase.soundRes)
-                PhraseEnum.ALARM -> saveMp3File(phrase.soundRes,this@PhrasesActivity){
-                    setRingtoneOrAlarm(it,RingtoneManager.TYPE_ALARM,this@PhrasesActivity){
-                        toast("Alarm sound set!")
+
+                PhraseEnum.PLAY -> {
+                    soundPlayer?.playSound(phrase.soundRes)
+                }
+
+                PhraseEnum.ALARM -> {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        if (Settings.System.canWrite(this)) {
+                            setAlarmSound(this, phrase.soundRes)
+                            toast("go to alarm settings and set goggins.mp3 as alarm sound")
+                        } else {
+                            openAndroidPermissionsMenu(this)
+                        }
+                    } else {
+                        setAlarmSound(this, phrase.soundRes)
                     }
                 }
             }
-
         }
 
-        recycler_view.apply{
-            // use this setting to improve performance if you know that changes
-            // in content do not change the layout size of the RecyclerView
+        binding.recyclerView.apply {
             setHasFixedSize(true)
-
-            // use a linear layout manager
             layoutManager = LinearLayoutManager(this@PhrasesActivity)
-
-            // specify an viewAdapter (see also next example)
             adapter = viewAdapter
+        }
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        return if (item.itemId == android.R.id.home) {
+            finish()
+            true
+        } else {
+            super.onOptionsItemSelected(item)
         }
     }
 

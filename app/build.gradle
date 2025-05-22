@@ -1,17 +1,22 @@
-apply plugin: 'com.android.application'
-apply plugin: 'kotlin-android'
-apply plugin: 'kotlin-android-extensions'
+plugins {
+    id 'com.android.application'
+    id 'kotlin-android'
+}
+
+kotlin {
+    jvmToolchain(17)
+}
 
 android {
-    compileSdkVersion 30
-    buildToolsVersion "30.0.2"
+    namespace 'com.braziusProductions.gogginsmotivation'
+    compileSdk 35
 
     defaultConfig {
         applicationId "com.braziusProductions.gogginsmotivation"
-        minSdkVersion 18
-        targetSdkVersion 30
-        versionCode 3
-        versionName "1.0"
+        minSdkVersion 21
+        targetSdkVersion 35
+        versionCode 4
+        versionName "1.1"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -22,13 +27,19 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
+
+    buildFeatures {
+        viewBinding true
+    }
 }
-def kotlin_version = "1.4.10"
+
 dependencies {
     implementation fileTree(dir: "libs", include: ["*.jar"])
-    implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
-    implementation 'androidx.core:core-ktx:1.3.2'
-    implementation 'androidx.appcompat:appcompat:1.2.0'
-    implementation 'androidx.constraintlayout:constraintlayout:2.0.3'
-    implementation 'com.google.android.material:material:1.2.1'
+
+    implementation "androidx.core:core-ktx:1.13.1"
+    implementation "androidx.appcompat:appcompat:1.6.1"
+    implementation "com.google.android.material:material:1.11.0"
+    implementation "androidx.constraintlayout:constraintlayout:2.1.4"
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:2.0.0"
+
 }

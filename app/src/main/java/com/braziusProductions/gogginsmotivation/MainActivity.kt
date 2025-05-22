@@ -1,11 +1,10 @@
 package com.braziusProductions.gogginsmotivation
 
 import android.Manifest
-import android.animation.Animator
 import android.animation.AnimatorSet
 import android.content.ActivityNotFoundException
+import android.content.Context
 import android.content.Intent
-import android.media.MediaPlayer
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -13,110 +12,297 @@ import android.os.Handler
 import android.os.Looper
 import android.view.View
 import android.view.animation.Animation
+import android.view.animation.AnimationUtils
+import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.app.ShareCompat
-import androidx.core.content.FileProvider
-import com.braziusProductions.gogginsmotivation.BottomSheetItem.*
+import androidx.core.content.ContextCompat
+import androidx.recyclerview.widget.RecyclerView
+import androidx.viewpager2.widget.ViewPager2
+import com.braziusProductions.gogginsmotivation.databinding.ActivityMainBinding
 import com.braziusProductions.gogginsmotivation.phrases.PhrasesActivity
-import kotlinx.android.synthetic.main.activity_main.*
-import java.io.File
 
-
-class MainActivity : AppCompatActivity(), OptionsBottomSheetFragment.ItemClickListener {
+class MainActivity : AppCompatActivity() {
+    private lateinit var binding: ActivityMainBinding
     private lateinit var animatorSet: AnimatorSet
-    var data = getPhrasesData()
-    var selectedIndex = 0
-    lateinit var soundPlayer: SoundPlayer
-    val permissionsHelper by lazy {
+    private var data = getPhrasesData().shuffled()
+    private var selectedIndex = 0
+    private lateinit var soundPlayer: ContinuousSoundPlayer
+    private var isLoopEnabled = false
+    private var isSequentialPlayback = true
+
+    private val permissionsHelper by lazy {
         PermissionHelper(this@MainActivity, Manifest.permission.WRITE_EXTERNAL_STORAGE)
     }
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
-        data.shuffle()
-        soundPlayer = SoundPlayer(this@MainActivity,data[0].soundRes)
-        initViews()
-
-        features.setOnClickListener {
-            supportFragmentManager.let {
-                OptionsBottomSheetFragment.newInstance(Bundle()).apply {
-                    mListener = this@MainActivity
-                    show(it, tag)
+    // Create a completion listener for the sound player
+    private val soundCompletionListener = object : ContinuousSoundPlayer.OnCompletionListener {
+        override fun onCompletion() {
+            if (isSequentialPlayback && selectedIndex < data.size - 1) {
+                // Move to next sound if sequential playback is enabled
+                Handler(Looper.getMainLooper()).post {
+                    // Automatically click next button
+                    binding.next.performClick()
                 }
+            } else if (isSequentialPlayback) {
+                // We've reached the end of the playlist
+                updatePlayButtonState(false)
             }
         }
     }
 
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        binding = ActivityMainBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+        setupBackgroundPager()
+        soundPlayer = ContinuousSoundPlayer(this@MainActivity, data[0].soundRes)
+        soundPlayer.setOnCompletionListener(soundCompletionListener)
+        binding.bannerContainer.setOnClickListener {
+            openPlayStore(this, "com.braziusProductions.calisthenicsworkouttracker")
+        }
+        binding.downloadButton.setOnClickListener {
+            openPlayStore(this, "com.braziusProductions.calisthenicsworkouttracker")
+        }
+
+        initViews()
+        setupOptionButtons()
+    }
+
+    private fun setupBackgroundPager() {
+        binding.backgroundPager.adapter = BackgroundPagerAdapter()
+
+        // Create dots indicator
+        val dotsIndicator = binding.dotsIndicator
+        val dots = Array(4) { ImageView(this) }
+
+        dots.forEach { dot ->
+            dot.setImageDrawable(
+                ContextCompat.getDrawable(this, R.drawable.dot_inactive)
+            )
+            val params = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+            params.setMargins(8, 0, 8, 0)
+            dotsIndicator.addView(dot, params)
+        }
+        // Set first dot as active
+        dots[0].setImageDrawable(
+            ContextCompat.getDrawable(this, R.drawable.dot_active)
+        )
+
+        // Update dots when page changes
+        binding.backgroundPager.registerOnPageChangeCallback(
+            object : ViewPager2.OnPageChangeCallback() {
+                override fun onPageSelected(position: Int) {
+                    dots.forEachIndexed { index, dot ->
+                        dot.setImageDrawable(
+                            ContextCompat.getDrawable(
+                                this@MainActivity,
+                                if (index == position) R.drawable.dot_active
+                                else R.drawable.dot_inactive
+                            )
+                        )
+                    }
+                }
+            }
+        )
+    }
+
+    fun openPlayStore(context: Context, packageName: String) {
+        val uri = Uri.parse("market://details?id=$packageName")
+        val goToMarket = Intent(Intent.ACTION_VIEW, uri)
+        goToMarket.addFlags(Intent.FLAG_ACTIVITY_NO_HISTORY or
+                Intent.FLAG_ACTIVITY_NEW_DOCUMENT or
+                Intent.FLAG_ACTIVITY_MULTIPLE_TASK)
+        try {
+            context.startActivity(goToMarket)
+        } catch (e: ActivityNotFoundException) {
+            // Fallback to browser if Play Store not available
+            context.startActivity(
+                Intent(Intent.ACTION_VIEW,
+                    Uri.parse("https://play.google.com/store/apps/details?id=$packageName"))
+            )
+        }
+    }
+
+
     private fun checkPrevious() {
-        if (selectedIndex == 0) previous.isEnabled = false
+        binding.previous.isEnabled = selectedIndex != 0
+        binding.previous.alpha = if (selectedIndex != 0) 1.0f else 0.5f
     }
 
     private fun checkNext() {
-        if (selectedIndex == data.size - 1) next.isEnabled = false
+        binding.next.isEnabled = selectedIndex != data.size - 1
+        binding.next.alpha = if (selectedIndex != data.size - 1) 1.0f else 0.5f
     }
 
     private fun initViews() {
         animatorSet = AnimatorSet()
 
         checkPrevious()
-        main_text.text = data[selectedIndex].phrase
+        checkNext()
+        binding.mainText.text = data[selectedIndex].phrase
 
-        next.setOnClickListener {
+        binding.next.setOnClickListener {
             if (selectedIndex < data.size - 1) selectedIndex++
             checkNext()
-            previous.isEnabled = true
+            checkPrevious()
             slide(true)
+
+            // If sound is currently playing or sequential playback is active, update to new sound
+            if (soundPlayer.isPlaying() || isSequentialPlayback) {
+                soundPlayer.stop()
+                soundPlayer.setSoundResource(data[selectedIndex].soundRes)
+                soundPlayer.playSound(isLoopEnabled)
+                updatePlayButtonState(true)
+            }
         }
 
-        previous.setOnClickListener {
+        binding.previous.setOnClickListener {
             if (selectedIndex > 0) selectedIndex--
             checkPrevious()
-            next.isEnabled = true
+            checkNext()
             slide(false)
+
+            // If sound is currently playing or sequential playback is active, update to new sound
+            if (soundPlayer.isPlaying() || isSequentialPlayback) {
+                soundPlayer.stop()
+                soundPlayer.setSoundResource(data[selectedIndex].soundRes)
+                soundPlayer.playSound(isLoopEnabled)
+                updatePlayButtonState(true)
+            }
         }
 
-        play.setOnClickListener {
-            soundPlayer.playSound(data[selectedIndex].soundRes)
+        binding.play.setOnClickListener {
+            togglePlayback()
+        }
+
+        // Add long click listener for sequential playback
+        binding.play.setOnLongClickListener {
+            toggleSequentialPlayback()
+            true
+        }
+
+        // Initial states
+        updatePlayButtonState(false)
+    }
+
+    private fun togglePlayback() {
+        if (!soundPlayer.isPlaying()) {
+            soundPlayer.setSoundResource(data[selectedIndex].soundRes)
+            soundPlayer.playSound(isLoopEnabled)
+            updatePlayButtonState(true)
+        } else {
+            soundPlayer.pause()
+            updatePlayButtonState(false)
         }
     }
 
-    fun slide(right: Boolean) {
-        main_text.text = data[selectedIndex].phrase
-        val pos = if (right) screenRectPx.right.toFloat() else -screenRectPx.right.toFloat()
-        //main_text2.animate().x(pos).setDuration(0).start()
+    private fun toggleSequentialPlayback() {
+
+        if (isSequentialPlayback) {
+            // Start sequential playback from current index
+            isLoopEnabled = false // Disable loop to allow moving to next sound
+            soundPlayer.stop() // Stop current playback if any
+            soundPlayer.setSoundResource(data[selectedIndex].soundRes)
+            soundPlayer.playSound(false) // Start playing without loop
+            updatePlayButtonState(true)
+            Toast.makeText(this, "Sequential playback started", Toast.LENGTH_SHORT).show()
+        } else {
+            // Stop sequential playback
+            soundPlayer.pause()
+            updatePlayButtonState(false)
+            Toast.makeText(this, "Sequential playback stopped", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun updatePlayButtonState(isPlaying: Boolean) {
+        val playButton = binding.play
+        if (isPlaying) {
+            playButton.setImageDrawable(ContextCompat.getDrawable(this, R.drawable.baseline_pause_circle_24))
+        } else {
+            playButton.setImageDrawable(ContextCompat.getDrawable(this, R.drawable.play))
+        }
+    }
+
+    private fun setupOptionButtons() {
+        binding.rateApp.setOnClickListener {
+            rateApp()
+        }
+
+        binding.showAll.setOnClickListener {
+            showAllPhrases()
+        }
+
+        binding.shareSound.setOnClickListener {
+            shareSound(this@MainActivity, data[selectedIndex].soundRes)
+        }
+
+        binding.downloadImage.setOnClickListener {
+            downloadImage()
+        }
+    }
+
+    private fun slide(right: Boolean) {
+        // Setup slide in animation
+        val slideInAnimation = if (right) {
+            AnimationUtils.loadAnimation(this, R.anim.slide_in_right)
+        } else {
+            AnimationUtils.loadAnimation(this, R.anim.slide_in_left)
+        }
+
+        // Setup slide out animation
+        val slideOutAnimation = if (right) {
+            AnimationUtils.loadAnimation(this, R.anim.slide_out_left)
+        } else {
+            AnimationUtils.loadAnimation(this, R.anim.slide_out_right)
+        }
+
+        // Apply animations
+        binding.mainText.startAnimation(slideOutAnimation)
+
+        // Update text after animation
+        slideOutAnimation.setAnimationListener(object : Animation.AnimationListener {
+            override fun onAnimationStart(animation: Animation?) {}
+
+            override fun onAnimationEnd(animation: Animation?) {
+                binding.mainText.text = data[selectedIndex].phrase
+                binding.mainText.startAnimation(slideInAnimation)
+            }
+
+            override fun onAnimationRepeat(animation: Animation?) {}
+        })
     }
 
     override fun onStop() {
         super.onStop()
-        soundPlayer.stop()
+        // Do not stop the sound player here to allow background playback
     }
 
-    override fun onItemClick(item: BottomSheetItem) {
-
-        when (item) {
-            RATE -> rateApp()
-            SHOW_ALL -> showAllPhrases()
-            SHARE_SOUND -> shareSound(this@MainActivity,data[selectedIndex].soundRes)
-            DOWNLOAD_IMAGE -> downloadImage()
-        }
+    override fun onDestroy() {
+        super.onDestroy()
+        // Clean up resources when destroying the activity
+        soundPlayer.release()
     }
 
-    fun hideViews(hide: Boolean) {
-        next.visibility = if (hide) View.GONE else View.VISIBLE
-        previous.visibility = if (hide) View.GONE else View.VISIBLE
-        play.visibility = if (hide) View.GONE else View.VISIBLE
-        features.visibility = if (hide) View.GONE else View.VISIBLE
+    private fun hideViews(hide: Boolean) {
+        val visibility = if (hide) View.GONE else View.VISIBLE
+        binding.controlsCard.visibility = visibility
+        binding.optionsCard.visibility = visibility
+        binding.bannerContainer.visibility = visibility
+        binding.dotsIndicator.visibility = visibility
     }
 
-    fun saveImg() {
+    private fun saveImg() {
         hideViews(true)
         Handler(Looper.getMainLooper()).postDelayed({
-            takeScreenshot(root_view, window) { bmp ->
+            takeScreenshot(binding.rootView, window) { bmp ->
                 val uri = bmp.saveImage(this@MainActivity)
                 hideViews(false)
-                Toast.makeText(this, "photo saved here $uri", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Quote saved to gallery", Toast.LENGTH_SHORT).show()
             }
         }, 200)
     }
@@ -124,7 +310,9 @@ class MainActivity : AppCompatActivity(), OptionsBottomSheetFragment.ItemClickLi
     private fun downloadImage() {
         if (permissionsHelper.isGranted()) {
             saveImg()
-        } else permissionsHelper.request()
+        } else {
+            permissionsHelper.request()
+        }
     }
 
     override fun onRequestPermissionsResult(
@@ -149,15 +337,15 @@ class MainActivity : AppCompatActivity(), OptionsBottomSheetFragment.ItemClickLi
     }
 
     private fun showAllPhrases() {
-        startActivity(Intent(this,PhrasesActivity::class.java))
+        startActivity(Intent(this, PhrasesActivity::class.java))
     }
 
     private fun rateApp() {
         openAppInPlayStore()
     }
 
-    fun openAppInPlayStore() {
-        val uri = Uri.parse("market://details?id=" + packageName)
+    private fun openAppInPlayStore() {
+        val uri = Uri.parse("market://details?id=$packageName")
         val goToMarketIntent = Intent(Intent.ACTION_VIEW, uri)
 
         var flags = Intent.FLAG_ACTIVITY_NO_HISTORY or Intent.FLAG_ACTIVITY_MULTIPLE_TASK
@@ -169,13 +357,13 @@ class MainActivity : AppCompatActivity(), OptionsBottomSheetFragment.ItemClickLi
         goToMarketIntent.addFlags(flags)
 
         try {
-            startActivity( goToMarketIntent, null)
+            startActivity(goToMarketIntent)
         } catch (e: ActivityNotFoundException) {
-            val intent = Intent(Intent.ACTION_VIEW,
-                Uri.parse("http://play.google.com/store/apps/details?id=" + packageName))
-
-            startActivity(intent, null)
+            val intent = Intent(
+                Intent.ACTION_VIEW,
+                Uri.parse("http://play.google.com/store/apps/details?id=$packageName")
+            )
+            startActivity(intent)
         }
     }
-
 }
