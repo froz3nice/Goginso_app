@@ -10,26 +10,22 @@ import android.graphics.Rect
 import android.media.RingtoneManager
 import android.net.Uri
 import android.os.Build
+import android.os.Environment
 import android.os.Handler
 import android.os.Looper
 import android.provider.MediaStore
 import android.provider.Settings
 import android.util.DisplayMetrics
+import android.util.Log
 import android.view.PixelCopy
 import android.view.View
 import android.view.Window
 import android.widget.Toast
-import androidx.core.app.ShareCompat
-import java.io.BufferedInputStream
-import java.io.File
-import java.io.FileInputStream
-import java.io.IOException
-import java.util.ArrayList
-import android.os.Environment
 import androidx.annotation.RawRes
 import androidx.core.content.FileProvider
+import java.io.File
+import java.io.FileInputStream
 import java.io.FileOutputStream
-import java.io.InputStream
 import java.io.OutputStream
 
 fun getPhrasesData(): ArrayList<PhraseData> {
@@ -431,44 +427,82 @@ fun shareSound(context: Context, @RawRes soundResId: Int, fileName: String = "go
 }
 
 fun takeScreenshot(view: View, window: Window?, bitmap: (Bitmap) -> Unit) {
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-        if (window != null) {
-            val bitmap = Bitmap.createBitmap(view.width, view.height, Bitmap.Config.ARGB_8888)
-            val locationOfViewInWindow = IntArray(2)
-            view.getLocationInWindow(locationOfViewInWindow)
-            try {
-                PixelCopy.request(
-                    window,
-                    Rect(
-                        locationOfViewInWindow[0],
-                        locationOfViewInWindow[1],
-                        locationOfViewInWindow[0] + view.width,
-                        locationOfViewInWindow[1] + view.height
-                    ),
-                    bitmap,
-                    { copyResult ->
-                        if (copyResult == PixelCopy.SUCCESS) {
-                            bitmap(bitmap)
-                        }
-                        // possible to handle other result codes ...
-                    },
-                    Handler(Looper.getMainLooper())
-                )
-            } catch (e: IllegalArgumentException) {
-                // PixelCopy may throw IllegalArgumentException, make sure to handle it
+    when {
+        Build.VERSION.SDK_INT >= 34 -> {
+            if (window != null) {
+                val locationOfViewInWindow = IntArray(2)
+                view.getLocationInWindow(locationOfViewInWindow)
+
+                try {
+                    Log.d("TAG", "takeScreenshot: ${locationOfViewInWindow[0]} ${locationOfViewInWindow[1]}")
+                    window.decorView.post {
+                        val rect = Rect(
+                            locationOfViewInWindow[0],
+                            locationOfViewInWindow[1],
+                            locationOfViewInWindow[0] + view.width,
+                            locationOfViewInWindow[1] + view.height
+                        )
+
+                        val bmp = Bitmap.createBitmap(view.width, view.height, Bitmap.Config.ARGB_8888)
+                        view.draw(android.graphics.Canvas(bmp))
+                        bitmap(bmp)
+                    }
+                } catch (e: Exception) {
+                    // Fallback to drawing cache method
+                    view.isDrawingCacheEnabled = true
+                    view.buildDrawingCache(true)
+                    val b = Bitmap.createBitmap(view.drawingCache)
+                    view.isDrawingCacheEnabled = false
+                    bitmap(b)
+                }
             }
         }
-    } else {
-        view.isDrawingCacheEnabled = true
-        view.buildDrawingCache(true)
-        val b = Bitmap.createBitmap(view.drawingCache)
-        view.isDrawingCacheEnabled = false
-        bitmap(b)
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.O -> {
+            if (window != null) {
+                val bitmap = Bitmap.createBitmap(view.width, view.height, Bitmap.Config.ARGB_8888)
+                val locationOfViewInWindow = IntArray(2)
+                view.getLocationInWindow(locationOfViewInWindow)
+                try {
+                    PixelCopy.request(
+                        window,
+                        Rect(
+                            locationOfViewInWindow[0],
+                            locationOfViewInWindow[1],
+                            locationOfViewInWindow[0] + view.width,
+                            locationOfViewInWindow[1] + view.height
+                        ),
+                        bitmap,
+                        { copyResult ->
+                            if (copyResult == PixelCopy.SUCCESS) {
+                                bitmap(bitmap)
+                            }
+                        },
+                        Handler(Looper.getMainLooper())
+                    )
+                } catch (e: IllegalArgumentException) {
+                    // Fallback to drawing cache method
+                    view.isDrawingCacheEnabled = true
+                    view.buildDrawingCache(true)
+                    val b = Bitmap.createBitmap(view.drawingCache)
+                    view.isDrawingCacheEnabled = false
+                    bitmap(b)
+                }
+            }
+        }
+        else -> {
+            view.isDrawingCacheEnabled = true
+            view.buildDrawingCache(true)
+            val b = Bitmap.createBitmap(view.drawingCache)
+            view.isDrawingCacheEnabled = false
+            bitmap(b)
+        }
     }
 }
+
 fun Context.toast(msg: String){
     Toast.makeText(this,msg,Toast.LENGTH_SHORT).show()
 }
+
 fun openAndroidPermissionsMenu(context: Activity) {
     val intent = Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS)
     intent.data = Uri.parse("package:" + context.getPackageName())

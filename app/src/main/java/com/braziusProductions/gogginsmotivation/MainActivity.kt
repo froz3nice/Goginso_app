@@ -114,16 +114,20 @@ class MainActivity : AppCompatActivity() {
     fun openPlayStore(context: Context, packageName: String) {
         val uri = Uri.parse("market://details?id=$packageName")
         val goToMarket = Intent(Intent.ACTION_VIEW, uri)
-        goToMarket.addFlags(Intent.FLAG_ACTIVITY_NO_HISTORY or
-                Intent.FLAG_ACTIVITY_NEW_DOCUMENT or
-                Intent.FLAG_ACTIVITY_MULTIPLE_TASK)
+        goToMarket.addFlags(
+            Intent.FLAG_ACTIVITY_NO_HISTORY or
+                    Intent.FLAG_ACTIVITY_NEW_DOCUMENT or
+                    Intent.FLAG_ACTIVITY_MULTIPLE_TASK
+        )
         try {
             context.startActivity(goToMarket)
         } catch (e: ActivityNotFoundException) {
             // Fallback to browser if Play Store not available
             context.startActivity(
-                Intent(Intent.ACTION_VIEW,
-                    Uri.parse("https://play.google.com/store/apps/details?id=$packageName"))
+                Intent(
+                    Intent.ACTION_VIEW,
+                    Uri.parse("https://play.google.com/store/apps/details?id=$packageName")
+                )
             )
         }
     }
@@ -222,7 +226,12 @@ class MainActivity : AppCompatActivity() {
     private fun updatePlayButtonState(isPlaying: Boolean) {
         val playButton = binding.play
         if (isPlaying) {
-            playButton.setImageDrawable(ContextCompat.getDrawable(this, R.drawable.baseline_pause_circle_24))
+            playButton.setImageDrawable(
+                ContextCompat.getDrawable(
+                    this,
+                    R.drawable.baseline_pause_circle_24
+                )
+            )
         } else {
             playButton.setImageDrawable(ContextCompat.getDrawable(this, R.drawable.play))
         }
@@ -308,11 +317,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun downloadImage() {
-        if (permissionsHelper.isGranted()) {
-            saveImg()
-        } else {
-            permissionsHelper.request()
-        }
+        saveImg()
     }
 
     override fun onRequestPermissionsResult(
