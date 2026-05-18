@@ -41,7 +41,7 @@ fun getPhrasesData(): ArrayList<PhraseData> {
         fuck = "fuck"
         mofo = "motherfucker"
     } else {
-        fucking = "f-ing"
+        fucking = "fin"
         shit = "sh"
         fuck = "f"
         mofo = "mfer"
@@ -354,7 +354,7 @@ fun getPhrasesData(): ArrayList<PhraseData> {
         add(
             PhraseData(
                 R.raw.sucks_continue_to_suck,
-                "It sucks. It just f-ing sucks. And it's going to continue to suck"
+                "It sucks. It just fin sucks. And it's going to continue to suck"
             )
         )
         add(

@@ -22,6 +22,7 @@ import androidx.recyclerview.widget.RecyclerView
 import androidx.viewpager2.widget.ViewPager2
 import com.braziusProductions.gogginsmotivation.databinding.ActivityMainBinding
 import com.braziusProductions.gogginsmotivation.phrases.PhrasesActivity
+import androidx.core.net.toUri
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
@@ -60,10 +61,22 @@ class MainActivity : AppCompatActivity() {
         soundPlayer = ContinuousSoundPlayer(this@MainActivity, data[0].soundRes)
         soundPlayer.setOnCompletionListener(soundCompletionListener)
         binding.bannerContainer.setOnClickListener {
-            openPlayStore(this, "com.braziusProductions.calisthenicsworkouttracker")
+            val link = "https://play.google.com/store/apps/details?id=com.braziusProductions.calisthenicsworkouttracker&referrer=goggins"
+            this.startActivity(
+                Intent(
+                    Intent.ACTION_VIEW,
+                    link.toUri()
+                )
+            )
         }
         binding.downloadButton.setOnClickListener {
-            openPlayStore(this, "com.braziusProductions.calisthenicsworkouttracker")
+            val link = "https://play.google.com/store/apps/details?id=com.braziusProductions.calisthenicsworkouttracker&referrer=goggins"
+            this.startActivity(
+                Intent(
+                    Intent.ACTION_VIEW,
+                    link.toUri()
+                )
+            )
         }
 
         initViews()

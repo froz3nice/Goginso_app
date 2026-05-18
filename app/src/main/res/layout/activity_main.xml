@@ -71,6 +71,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center_vertical"
+            android:background="#212020"
             android:orientation="horizontal"
             android:padding="12dp">
 
@@ -80,7 +81,7 @@
                 android:layout_height="48dp"
                 android:layout_marginEnd="12dp"
                 android:contentDescription="calisthenics icon"
-                android:src="@drawable/icon" />
+                android:src="@drawable/app_logo" />
 
             <LinearLayout
                 android:layout_width="0dp"
@@ -93,7 +94,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Build Mental and Physical Strength with calisthenics!"
-                    android:textColor="#333"
+                    android:textColor="#f1f1f1"
                     android:textSize="15sp"
                     android:textStyle="bold" />
 
@@ -102,7 +103,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Download Calisthenics app to get you started"
-                    android:textColor="#555"
+                    android:textColor="#f1f1f1"
                     android:textSize="13sp" />
             </LinearLayout>
 
@@ -110,10 +111,10 @@
                 android:id="@+id/download_button"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:backgroundTint="#00796B"
+                android:backgroundTint="#F6AE2D"
                 android:text="Download"
                 android:textAllCaps="false"
-                android:textColor="#FFFFFF"
+                android:textColor="#000000"
                 android:paddingStart="16dp"
                 android:paddingEnd="16dp"
                 android:paddingTop="8dp"
